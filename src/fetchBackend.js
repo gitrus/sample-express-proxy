@@ -16,7 +16,7 @@ export default async function fetchBackend(method, url, body = null, options = {
     body: body && !(body instanceof FormData) ? JSON.stringify(body) : body,
   });
 
-  if (response.statusCode >= 500) {
+  if (response.status >= 500) {
     throw new Error(`Server error ${url}`);
   }
 

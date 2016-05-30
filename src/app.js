@@ -14,6 +14,16 @@ import createUserFetchBackend from './createUserFetchBackend';
 export const app = express();
 export const server = new Server(app);
 
+function errorChecking(routeHandler) {
+  return async function (req, res, next) {
+    try {
+      await routeHandler(req, res, next);
+    } catch (err) {
+      next(err);
+    }
+  }
+}
+
 if (process.env.PUBLIC_DIR) {
   app.use(express.static(process.env.PUBLIC_DIR));
 }
@@ -49,7 +59,7 @@ app.use((request, response, next) => {
 
 app.use('/data', bodyParser.json());
 
-app.use('/data', async (req, res) => {
+app.use('/data', errorChecking(async (req, res) => {
   let token;
 
   if (req.headers['x-auth-token']) {
@@ -69,20 +79,17 @@ app.use('/data', async (req, res) => {
   const url = `/api${req.path}${params ? `?${params}` : ''}`;
 
   const backendResponse = await fetchBackend(req.method, url, req.body);
-  try {
-    await util.handleErrors(
-      backendResponse,
-      `${backendResponse.status} on ${req.originalUrl}`
-    );
-  } catch(error) {
-    next(error);
-  }
+
+  await util.handleErrors(
+    backendResponse,
+    `${backendResponse.status} on ${req.originalUrl}`
+  );
 
   res.send({ data: await backendResponse.json() });
-});
+}));
 
 app.use((err, req, res, next) => {
-  res.status(500).send({ error: 'err' });
+  res.status(500).send({ error: err });
 });
 
 app.get('/files/:key/*', (req, res) => {
